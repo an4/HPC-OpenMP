@@ -4,13 +4,12 @@ EXE1=d2q9-bgk.exe
 EXES=$(EXE1)
 
 CC=gcc
-CFLAGS=-Wall -DDEBUG
-CLFLAGS=-lm
+CFLAGS=-Wall -DDEBUG -lm -Wl,--no-as-needed
 
 all: $(EXES)
 
 $(EXES): %.exe : %.c
-	$(CC) $(CFLAGS) $^ -o $@ $(CLFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@
 
 .PHONY: all clean
 
