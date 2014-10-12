@@ -1,0 +1,6 @@
+
+
+To plot the velocity for the final state of the simulation:
+gnuplot final_state.plt
+on login node:
+display final_state.png
