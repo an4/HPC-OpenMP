@@ -14,5 +14,10 @@ application="./d2q9-bgk.exe input_128x128.params obstacles_128x128_box.dat"
 #! Run options for the application
 options=""
 
+
+#! change the working directory (default is home directory)
+
+cd $PBS_O_WORKDIR
+
 #! Run the executable
 $application $options
