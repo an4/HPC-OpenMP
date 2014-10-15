@@ -236,8 +236,8 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
       ** respecting periodic boundary conditions (wrap around) */
       y_n = (ii + 1) % params.ny;
       x_e = (jj + 1) % params.nx;
-      y_s = (ii == 0) ? (ii + params.ny - 1) : (ii - 1);
-      x_w = (jj == 0) ? (jj + params.nx - 1) : (jj - 1);
+      y_s = (ii - 1 + params.ny) % params.ny;
+      x_w = (jj - 1 + params.nx) % params.nx;
       /* propagate densities to neighbouring cells, following
       ** appropriate directions of travel and writing into
       ** scratch space grid */
