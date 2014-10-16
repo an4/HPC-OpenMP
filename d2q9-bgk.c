@@ -202,7 +202,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
   /* modify the 2nd row of the grid */
   ii=(params.ny - 2)*params.nx;
   #pragma omp parallel for
-  for(jj=ii;jj<ii+params.nx;jj++) {
+  for(jj=ii;jj<ii+params.nx;++jj) {
     /* if the cell is not occupied and
     ** we don't send a density negative */
     if( !obstacles[jj] && 
@@ -230,8 +230,8 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
 
   /* loop over _all_ cells */
   #pragma omp parallel for private(x_e,x_w,y_n,y_s,jj)
-  for(ii=0;ii<params.ny;ii++) {
-    for(jj=0;jj<params.nx;jj++) {
+  for(ii=0;ii<params.ny;++ii) {
+    for(jj=0;jj<params.nx;++jj) {
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
       y_n = (ii + 1) % params.ny;
@@ -275,12 +275,12 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
   ** the propagate step and so values of interest
   ** are in the scratch-space grid */
   #pragma omp parallel for private(kk,local_density,u_x,u_y,u_sq,d_equ,u)
-  for(ii=0;ii<params.ny*params.nx;ii++) {
+  for(ii=0;ii<params.ny*params.nx;++ii) {
       /* don't consider occupied cells */
       if(!obstacles[ii]) {
 	    /* compute local density total */
 	    local_density = 0.0;
-	    for(kk=0;kk<NSPEEDS;kk++) {
+	    for(kk=0;kk<NSPEEDS;++kk) {
 	      local_density += tmp_cells[ii].speeds[kk];
 	    }                 
 	    /* compute x velocity component */
@@ -340,7 +340,7 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
 					     + (u[8] * u[8]) / (2.0 * c_sq * c_sq)
 					     - u_sq / (2.0 * c_sq));
 	    /* relaxation step */
-	    for(kk=0;kk<NSPEEDS;kk++) {
+	    for(kk=0;kk<NSPEEDS;++kk) {
 	      cells[ii].speeds[kk] = (tmp_cells[ii].speeds[kk]
 						     + params.omega * 
 						     (d_equ[kk] - tmp_cells[ii].speeds[kk]));
@@ -438,7 +438,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
   w1 = params->density      /9.0;
   w2 = params->density      /36.0;
 
-  for(ii=0;ii<params->ny*params->nx;ii++) {
+  for(ii=0;ii<params->ny*params->nx;++ii) {
       /* centre */
       (*cells_ptr)[ii].speeds[0] = w0;
       /* axis directions */
@@ -454,7 +454,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
   }
 
   /* first set all cells in obstacle array to zero */ 
-  for(ii=0;ii<params->ny*params->nx;ii++) {
+  for(ii=0;ii<params->ny*params->nx;++ii) {
       (*obstacles_ptr)[ii] = 0;
   }
 
