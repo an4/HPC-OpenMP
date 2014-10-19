@@ -3,10 +3,10 @@
 EXE1=d2q9-bgk.exe
 EXES=$(EXE1)
 
-CC=gcc
-CFLAGS=-fopenmp -Wall #-DDEBUG
+CC=g++
+CFLAGS=-fopenmp -Wall #-DDEBUG  
 CFLAGS+=-O3
-CLFLAGS=-lm
+#CLFLAGS=-lm /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_highgui.so /usr/local/lib/libopencv_legacy.so
 
 all: $(EXES)
 
