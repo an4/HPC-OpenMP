@@ -218,12 +218,13 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
 {
-  int ii,jj;            /* generic counters */
+  int ii;            /* generic counters */
 
   /* loop over _all_ cells */
-  #pragma omp parallel for private(jj)
+  #pragma omp parallel for
   for(ii=0;ii<params.ny;++ii) {
-    for(jj=0;jj<params.nx;++jj) {
+    int jj = 0;
+    for(;jj<params.nx;++jj) {
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
       int y_n = (ii + 1 == params.ny) ? 0 : (ii+1);
@@ -251,13 +252,13 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
 
 double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
 {
-  int ii,kk;                    /* generic counters */
+  int ii;                    /* generic counters */
   const double c_sq = 1.0/3.0;  /* square of speed of sound */
   const double w0 = 4.0/9.0;    /* weighting factor */
   const double w1 = 1.0/9.0;    /* weighting factor */
   const double w2 = 1.0/36.0;   /* weighting factor */
   int    tot_cells = 0;         /* no. of cells used in calculation */                   
-  double tot_u = 0.0;           /* accumulated magnitudes of velocity for each cell */
+  float  tot_u = 0.0;           /* accumulated magnitudes of velocity for each cell */
   
   const double aa = 1 / (2.0 * c_sq * c_sq);
   const double bb = 1 / (2.0 * c_sq);
@@ -267,13 +268,14 @@ double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* 
   ** NB the collision step is called after
   ** the propagate step and so values of interest
   ** are in the scratch-space grid */
-  #pragma omp parallel for private(kk) reduction(+:tot_cells,tot_u)
+  #pragma omp parallel for reduction(+:tot_cells,tot_u)
   for(ii=0;ii<params.ny*params.nx;++ii) {
       /* don't consider occupied cells */
       if(!obstacles[ii]) {
 	    /* compute local density total */
 	    float local_density = 0.0;
-	    for(kk=0;kk<NSPEEDS;++kk) {
+	    int kk=0;
+	    for(;kk<NSPEEDS;++kk) {
 	      local_density += tmp_cells[ii].speeds[kk];
 	    }                 
 	    /* compute x velocity component */
