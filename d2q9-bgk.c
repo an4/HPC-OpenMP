@@ -57,6 +57,12 @@
 #include<sys/time.h>
 #include<sys/resource.h>
 
+#ifdef DEBUG
+#include "/usr/include/opencv/cxcore.h"
+#include "/usr/include/opencv/cv.h"
+#include "/usr/include/opencv/highgui.h"
+#endif
+
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
 #define AVVELSFILE      "av_vels.dat"
@@ -77,7 +83,7 @@ typedef struct {
   float speeds[NSPEEDS];
 } t_speed;
 
-enum boolean { FALSE, TRUE };
+//enum boolean { FALSE, TRUE };
 
 /*
 ** function prototypes
@@ -117,6 +123,89 @@ double calc_reynolds(const t_param params, t_speed* cells, int* obstacles);
 void die(const char* message, const int line, const char *file);
 void usage(const char* exe);
 
+#ifdef DEBUG
+
+void add_frame(const t_param params, t_speed* cells, int* obstacles, cv::VideoWriter* vw)
+{
+    // Create image
+    cv::Mat image = cv::Mat(params.ny, params.nx, CV_8UC3);
+    
+    // Add frame to scene
+    for(int i=0; i < params.ny; ++i)
+    {
+        for(int j = 0; j<params.nx; ++j) 
+        {
+            int cell = params.nx * i + j;
+
+            //Values between 0.097430 and 0.110866
+            float local_density = 0.0f;
+
+            for(int kk=0;kk<NSPEEDS;kk++) {
+              local_density += cells[cell].speeds[kk];
+            }
+           /*
+            // Add some values 
+            if(local_density < 0.10f) {
+              float val = (local_density - 0.1) * 100000;
+              image.at<cv::Vec3b>(i,j)[2] = (128 + (unsigned int)val) % 255;
+            }
+            else {
+              image.at<cv::Vec3b>(i,j)[2] = 0;
+            }
+
+            image.at<cv::Vec3b>(i,j)[0] = 0;
+            image.at<cv::Vec3b>(i,j)[1] = 0;
+            */
+            if(obstacles[cell]) { 
+                image.at<cv::Vec3b>(i,j)[0] = 255;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 255;
+            } else if(local_density > 0.101f) {
+                image.at<cv::Vec3b>(i,j)[0] = 0;
+                image.at<cv::Vec3b>(i,j)[1] = 0;
+                image.at<cv::Vec3b>(i,j)[2] = 255;
+            } else if(local_density > 0.1005f) {
+                image.at<cv::Vec3b>(i,j)[0] = 0;
+                image.at<cv::Vec3b>(i,j)[1] = 128;
+                image.at<cv::Vec3b>(i,j)[2] = 255;
+            } else if(local_density > 0.1001f) {
+                image.at<cv::Vec3b>(i,j)[0] = 0;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 255;
+            } else if(local_density > 0.10005f) { 
+                image.at<cv::Vec3b>(i,j)[0] = 0;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 128;
+            } else if(local_density >0.1f) { 
+                image.at<cv::Vec3b>(i,j)[0] = 0;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 0;
+            } else if(local_density > 0.09995f) {
+                image.at<cv::Vec3b>(i,j)[0] = 128;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 0;
+            } else if(local_density > 0.0999f) {
+                image.at<cv::Vec3b>(i,j)[0] = 255;
+                image.at<cv::Vec3b>(i,j)[1] = 255;
+                image.at<cv::Vec3b>(i,j)[2] = 0;
+            } else if(local_density > 0.0995f) {
+                image.at<cv::Vec3b>(i,j)[0] = 255;
+                image.at<cv::Vec3b>(i,j)[1] = 128;
+                image.at<cv::Vec3b>(i,j)[2] = 0;
+            } else {
+                image.at<cv::Vec3b>(i,j)[0] = 255;
+                image.at<cv::Vec3b>(i,j)[1] = 0;
+                image.at<cv::Vec3b>(i,j)[2] = 0;
+            }
+        }
+    }
+
+    // Add frame to the sequence
+    vw->write(image);
+}
+
+#endif 
+
 /*
 ** main program:
 ** initialise, timestep loop, finalise
@@ -126,7 +215,7 @@ int main(int argc, char* argv[])
   char*    paramfile = NULL;    /* name of the input parameter file */
   char*    obstaclefile = NULL; /* name of a the input obstacle file */
   t_param  params;              /* struct to hold parameter values */
-  t_speed* cells     = NULL;    /* grid containing fluid densities */
+  t_speed* cells     = NULL;    /* grid containing fluid denfsities */
   t_speed* tmp_cells = NULL;    /* scratch space */
   int*     obstacles = NULL;    /* grid indicating which cells are blocked */
   double*  av_vels   = NULL;    /* a record of the av. velocity computed for each timestep */
@@ -153,16 +242,37 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr,NULL);
   tic=timstr.tv_sec+(timstr.tv_usec/1000000.0);
 
+  #ifdef DEBUG
+    cv::VideoWriter *vw = new cv::VideoWriter(
+      "video.avi", // filename
+      CV_FOURCC('P','I','M','1'), // codec
+      200.0, // fps
+      cv::Size(params.nx, params.ny), // size
+      true); // isColor
+  #endif
+
   for (ii=0;ii<params.maxIters;ii++) {
     accelerate_flow(params,cells,obstacles);
     propagate(params,cells,tmp_cells);
     av_vels[ii] = collision(params,cells,tmp_cells,obstacles);
 #ifdef DEBUG
-    printf("==timestep: %d==\n",ii);
-    printf("av velocity: %.12E\n", av_vels[ii]);
-    printf("tot density: %.12E\n",total_density(params,cells));
+    add_frame(params, cells, obstacles, vw);    
+    
+    //printf("==timestep: %d==\n",ii);
+    //printf("av velocity: %.12E\n", av_vels[ii]);
+    //printf("tot density: %.12E\n",total_density(params,cells));
 #endif
   }
+
+
+  #ifdef DEBUG
+    if(vw != NULL) {
+      delete vw;
+      vw = NULL;
+    }
+  #endif
+
+
   gettimeofday(&timstr,NULL);
   toc=timstr.tv_sec+(timstr.tv_usec/1000000.0);
   getrusage(RUSAGE_SELF, &ru);
@@ -226,7 +336,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
     int jj = 0;
     for(;jj<params.nx;++jj) {
       /* determine indices of axis-direction neighbours
-      ** respecting periodic boundary conditions (wrap around) */
+      ** respectingav periodic boundary conditions (wrap around) */
       int y_n = (ii + 1 == params.ny) ? 0 : (ii+1);
       int x_e = (jj + 1 == params.nx) ? 0 : (jj+1);
       int y_s = (ii == 0) ? (ii + params.ny - 1) : (ii - 1);
@@ -433,7 +543,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
     die("cannot allocate memory for tmp_cells",__LINE__,__FILE__);
   
   /* the map of obstacles */
-  *obstacles_ptr = malloc(sizeof(int*)*(params->ny*params->nx));
+  *obstacles_ptr = (int*)malloc(sizeof(int)*(params->ny*params->nx));
   if (*obstacles_ptr == NULL) 
     die("cannot allocate column memory for obstacles",__LINE__,__FILE__);
 
