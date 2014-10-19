@@ -69,9 +69,9 @@
 
 /* struct to hold the parameter values */
 typedef struct {
-  int    nx;            /* no. of cells in x-direction */
-  int    ny;            /* no. of cells in y-direction */
-  int    maxIters;      /* no. of iterations */
+  unsigned int    nx;            /* no. of cells in x-direction */
+  unsigned int    ny;            /* no. of cells in y-direction */
+  unsigned int    maxIters;      /* no. of iterations */
   int    reynolds_dim;  /* dimension for Reynolds number */
   float  density;       /* density per link */
   float  accel;         /* density redistribution */
@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
   t_speed* tmp_cells = NULL;    /* scratch space */
   int*     obstacles = NULL;    /* grid indicating which cells are blocked */
   double*  av_vels   = NULL;    /* a record of the av. velocity computed for each timestep */
-  int      ii;                  /* generic counter */
+  unsigned int      ii;                  /* generic counter */
   struct timeval timstr;        /* structure to hold elapsed time */
   struct rusage ru;             /* structure to hold CPU time--system and user */
   double tic,toc;               /* floating point numbers to calculate elapsed wallclock time */
@@ -295,7 +295,7 @@ int main(int argc, char* argv[])
 
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
 {
-  int ii,jj;     /* generic counters */
+  unsigned int ii,jj;     /* generic counters */
   float w1,w2;  /* weighting factors */
   
   /* compute weighting factors */
@@ -328,23 +328,22 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
 
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
 {
-  int ii;            /* generic counters */
+  unsigned int ii,jj;            /* generic counters */
 
   /* loop over _all_ cells */
-  #pragma omp parallel for
+  #pragma omp parallel for collapse(2) private(jj)
   for(ii=0;ii<params.ny;++ii) {
-    int jj = 0;
-    for(;jj<params.nx;++jj) {
+    for(jj=0;jj<params.nx;++jj) {
       /* determine indices of axis-direction neighbours
       ** respectingav periodic boundary conditions (wrap around) */
-      int y_n = (ii + 1 == params.ny) ? 0 : (ii+1);
-      int x_e = (jj + 1 == params.nx) ? 0 : (jj+1);
-      int y_s = (ii == 0) ? (ii + params.ny - 1) : (ii - 1);
-      int x_w = (jj == 0) ? (jj + params.nx - 1) : (jj - 1);
+      unsigned int y_n = (ii + 1 == params.ny) ? 0 : (ii+1);
+      unsigned int x_e = (jj + 1 == params.nx) ? 0 : (jj+1);
+      unsigned int y_s = (ii == 0) ? (ii + params.ny - 1) : (ii - 1);
+      unsigned int x_w = (jj == 0) ? (jj + params.nx - 1) : (jj - 1);
       /* propagate densities to neighbouring cells, following
       ** appropriate directions of travel and writing into
       ** scratch space grid */
-      int kk = ii*params.nx + jj;
+      unsigned int kk = ii*params.nx + jj;
       tmp_cells[kk].speeds[0]  = cells[kk].speeds[0]; /* central cell, */
                                                                                      /* no movement   */
       tmp_cells[ii *params.nx + x_e].speeds[1] = cells[kk].speeds[1]; /* east */
@@ -363,12 +362,12 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells)
 
 double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
 {
-  int ii;                    /* generic counters */
+  unsigned int ii;                    /* generic counters */
   const double c_sq = 1.0/3.0;  /* square of speed of sound */
   const double w0 = 4.0/9.0;    /* weighting factor */
   const double w1 = 1.0/9.0;    /* weighting factor */
   const double w2 = 1.0/36.0;   /* weighting factor */
-  int    tot_cells = 0;         /* no. of cells used in calculation */                   
+  unsigned int    tot_cells = 0;         /* no. of cells used in calculation */                   
   float  tot_u = 0.0;           /* accumulated magnitudes of velocity for each cell */
   
   const double aa = 1 / (2.0 * c_sq * c_sq);
@@ -385,7 +384,7 @@ double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* 
       if(!obstacles[ii]) {
 	    /* compute local density total */
 	    float local_density = 0.0;
-	    int kk=0;
+	    unsigned int kk=0;
 	    for(;kk<NSPEEDS;++kk) {
 	      local_density += tmp_cells[ii].speeds[kk];
 	    }                 
@@ -481,8 +480,8 @@ int initialise(const char* paramfile, const char* obstaclefile,
 {
   char   message[1024];  /* message buffer */
   FILE   *fp;            /* file pointer */
-  int    ii;             /* generic counters */
-  int    xx,yy;          /* generic array indices */
+  unsigned int    ii;             /* generic counters */
+  unsigned int    xx,yy;          /* generic array indices */
   int    blocked;        /* indicates whether a cell is blocked by an obstacle */ 
   int    retval;         /* to hold return value for checking */
   double w0,w1,w2;       /* weighting factors */
@@ -629,8 +628,8 @@ int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr
 
 double av_velocity(const t_param params, t_speed* cells, int* obstacles)
 {
-  int    ii,kk;       /* generic counters */
-  int    tot_cells = 0;  /* no. of cells used in calculation */                   
+  unsigned int    ii,kk;       /* generic counters */
+  unsigned int    tot_cells = 0;  /* no. of cells used in calculation */                   
   double tot_u = 0.0;    /* accumulated magnitudes of velocity for each cell */
 
   #pragma omp parallel for reduction(+:tot_u,tot_cells)
@@ -678,7 +677,7 @@ double calc_reynolds(const t_param params, t_speed* cells, int* obstacles)
 
 double total_density(const t_param params, t_speed* cells)
 {
-  int ii,jj,kk;        /* generic counters */
+  unsigned int ii,jj,kk;        /* generic counters */
   double total = 0.0;  /* accumulator */
 
   for(ii=0;ii<params.ny;ii++) {
@@ -695,7 +694,7 @@ double total_density(const t_param params, t_speed* cells)
 int write_values(const t_param params, t_speed* cells, int* obstacles, double* av_vels)
 {
   FILE* fp;                     /* file pointer */
-  int ii,jj,kk;                 /* generic counters */
+  unsigned int ii,jj,kk;                 /* generic counters */
   const double c_sq = 1.0/3.0;  /* sq. of speed of sound */
   double local_density;         /* per grid cell sum of densities */
   double pressure;              /* fluid pressure in grid cell */
