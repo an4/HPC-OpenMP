@@ -383,7 +383,6 @@ double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* 
       if(!obstacles[ii]) {
 	    /* compute local density total */
 	    float local_density = 0.0;
-	    
 	    int kk=0;
 	    for(;kk<NSPEEDS;++kk) {
 	      local_density += tmp_cells[ii].speeds[kk];
